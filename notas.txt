@@ -1,0 +1,286 @@
+importe cache local
+---------
+import os
+
+os.environ["KAGGLEHUB_CACHE"] = "/path/on/cluster/datasets/kagglehub"
+
+import kagglehub
+
+path = kagglehub.dataset_download(
+    "balabaskar/tom-and-jerry-image-classification"
+)
+
+print(path)
+--------------------
+                    ┌── original images
+Kaggle dataset ─────┤
+                    └── annotations.json
+                           │
+                           ▼
+                    preprocessing script
+                           │
+             ┌─────────────┴─────────────┐
+             ▼                           ▼
+       processed dataset            metadata
+       ├── PET/                     CSV/JSON
+       ├── non_PET/
+       ├── ...
+       └── ...
+             │
+             ▼
+       training algorithm
+    
+
+
+datasets/
+├── raw/
+│   └── tom_and_jerry/
+│       ├── images/
+│       └── annotations.json
+│
+└── processed/
+    ├── train/
+    │   ├── PET/
+    │   └── non_PET/
+    ├── validation/
+    │   ├── PET/
+    │   └── non_PET/
+    └── test/
+        ├── PET/
+        └── non_PET/
+
+estilo do CSV
+
+image_path,label,split
+images/0001.jpg,PET,train
+images/0002.jpg,non_PET,train
+images/0003.jpg,PET,validation
+...
+
+
+raw images
+     +
+annotations
+     ↓
+dataset.csv
+     ↓
+PyTorch Dataset / TensorFlow Dataset
+
+script de procesammento
+--------------
+dataset_path = ...
+annotation_path = ...
+
+# read JSON
+# determine label for each image
+# generate dataset.csv
+
+70–80% train
+10–15% validation
+10–15% test
+
+image_path,label = ...
+image = load_image(image_path)
+-------------------
+
+
+dataset/
+├── raw/
+│   └── plastics/
+│       ├── images/
+│       └── annotations.json
+│
+├── dataset.csv
+│
+└── train.py
+
+image_path,label,split
+raw/plastics/images/plastic_001.jpg,PET,train
+raw/plastics/images/plastic_002.jpg,non_PET,train
+raw/plastics/images/plastic_003.jpg,PET,validation
+raw/plastics/images/plastic_004.jpg,non_PET,train
+raw/plastics/images/plastic_005.jpg,PET,test
+
+ou
+
+image_path,label,split,original_category,annotation_id
+raw/plastics/images/plastic_001.jpg,PET,train,plastic,1234
+raw/plastics/images/plastic_002.jpg,non_PET,train,plastic,1235
+...
+
+ler csv
+----------------------------
+import pandas as pd
+from PIL import Image
+from torch.utils.data import Dataset
+
+
+class PlasticDataset(Dataset):
+
+    def __init__(self, csv_file, split, transform=None):
+        self.data = pd.read_csv(csv_file)
+
+        # Keep only the requested split
+        self.data = self.data[self.data["split"] == split]
+
+        self.transform = transform
+
+        # Convert class names to numbers
+        self.label_map = {
+            "non_PET": 0,
+            "PET": 1
+        }
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+
+        row = self.data.iloc[idx]
+
+        image = Image.open(row["image_path"]).convert("RGB")
+
+        label = self.label_map[row["label"]]
+
+        if self.transform:
+            image = self.transform(image)
+
+        return image, label
+    
+train_dataset = PlasticDataset(
+    "dataset.csv",
+    split="train",
+    transform=train_transform
+)
+
+validation_dataset = PlasticDataset(
+    "dataset.csv",
+    split="validation",
+    transform=validation_transform
+)
+
+test_dataset = PlasticDataset(
+    "dataset.csv",
+    split="test",
+    transform=validation_transform
+)
+------------------------------
+from torch.utils.data import DataLoader
+
+train_loader = DataLoader(
+    train_dataset,
+    batch_size=32,
+    shuffle=True,
+    num_workers=8
+)
+
+validation_loader = DataLoader(
+    validation_dataset,
+    batch_size=32,
+    shuffle=False,
+    num_workers=8
+)
+
+test_loader = DataLoader(
+    test_dataset,
+    batch_size=32,
+    shuffle=False,
+    num_workers=8
+)
+-----------------------------
+json -> csv
+--------------------------------
+import json
+import pandas as pd
+from pathlib import Path
+
+with open("raw/plastics/annotations.json", "r") as f:
+    annotations = json.load(f)
+
+rows = []
+
+for filename, annotation in annotations.items():
+
+    material = annotation["material"]
+
+    if material == "PET":
+        label = "PET"
+    else:
+        label = "non_PET"
+
+    rows.append({
+        "image_path": f"raw/plastics/images/{filename}",
+        "label": label
+    })
+
+df = pd.DataFrame(rows)
+----------
+from sklearn.model_selection import train_test_split
+
+train, temp = train_test_split(
+    df,
+    test_size=0.30,
+    stratify=df["label"],
+    random_state=42
+)
+
+validation, test = train_test_split(
+    temp,
+    test_size=0.50,
+    stratify=temp["label"],
+    random_state=42
+)
+
+train["split"] = "train"
+validation["split"] = "validation"
+test["split"] = "test"
+
+df = pd.concat([train, validation, test])
+
+df.to_csv("dataset.csv", index=False)
+--------------------------------------------
+annotations.json
+       +
+raw images
+       ↓
+ preprocessing script
+       ↓
+  dataset.csv
+       ↓
+┌──────┴──────┐
+│             │
+train.py      evaluation
+
+
+
+                    KAGGLE
+                      │
+                      ▼
+             ┌─────────────────┐
+             │   RAW DATA      │
+             │                 │
+             │ images/         │
+             │ annotations.json│
+             └────────┬────────┘
+                      │
+                      │ preprocessing
+                      ▼
+             ┌─────────────────┐
+             │  dataset.csv    │
+             │                 │
+             │ path            │
+             │ label           │
+             │ split           │
+             │ object_id       │
+             └────────┬────────┘
+                      │
+              ┌───────┼───────┐
+              ▼       ▼       ▼
+            train    val     test
+              │       │       │
+              └───────┼───────┘
+                      ▼
+                   MODEL
+                      │
+                      ▼
+                 evaluation
