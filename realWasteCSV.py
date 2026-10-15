@@ -66,7 +66,7 @@ def cvv_creator():
     data = {'image_path':ipath,'label':lbl,'group':group}
     df = pd.DataFrame(data)
 
-    c_folder = os.path.join(csvs,'images')
+    c_folder = os.path.join(csvs,'created')
     if not os.path.exists(c_folder):
             os.makedirs(c_folder)
 
@@ -74,7 +74,7 @@ def cvv_creator():
 
 def update_cvv():
     i_path = os.path.join(main_path,'Plastic')
-    df = pd.read_csv(os.path.join(csvs,'images',csv_name))
+    df = pd.read_csv(os.path.join(csvs,'created',csv_name))
     for image in to_change:
         c = os.path.join(main_path,'Plastic','Plastic_'+image+'.jpg')
         #print(c)
@@ -120,6 +120,7 @@ def cvv_temp():
     f_name = []
     group_count = 0
     # 'Textile Trash'
+    # 'Plastic'
     directory = os.path.join(pwd,'Plastic','objetos')
     for (root,dirs,files) in os.walk(directory,topdown=True):
         # print("Directory path: %s"%root)
@@ -137,41 +138,51 @@ def cvv_temp():
             group_count = group_count + 1
     data = {'image':images,'folder':f_name,'group':group}
     df = pd.DataFrame(data)
-    df.to_csv(os.path.join(csvs,'groups','realwaste_plastic_groups.csv'),index=False)
+    # plastic
+    # textileTrash
+    df.to_csv(os.path.join(csvs,'groups','realwaste_plastic_groups.csv'),index=True,index_label='id')
 
 def temp_fun():
-    dg = pd.read_csv(os.path.join(csvs,'images',csv_name))
-    df = pd.read_csv(os.path.join(csvs,'images','realwates_groups.csv'))
-    for index in range(len(df)):
-        path = os.path.join(main_path,'Plastic',df.loc[index,'image_name'])
+    dg = pd.read_csv(os.path.join(csvs,'created',csv_name))
+    dpl = pd.read_csv(os.path.join(csvs,'groups','realwaste_plastic_groups.csv'))
+    dtt = pd.read_csv(os.path.join(csvs,'groups','realwaste_textileTrash_groups.csv'))
+    for index in range(len(dpl)):
+        path = os.path.join(main_path,'Plastic',dpl.loc[index,'image'])
         id = dg[dg['image_path']==path].iloc[-1]['id']
         # print(f"{'-'*20}\n{id}")
         # tem_1 = dg.loc[id,'group']
         # print(f"\t{type(tem_1)}\n{tem_1}")
-        # tem_2 = df.loc[index,'group']
+        # tem_2 = dpl.loc[index,'group']
         # print(f"\t{type(tem_2)}\n{tem_2}")
 
-        dg.loc[id,'group'] = df.loc[index,'group']
+        dg.loc[id,'group'] = dpl.loc[index,'group']
 
-    result = df.iloc[-1]['group']
+    result = dpl.iloc[-1]['group']
     x = result + 1
-    no_group = dg[dg['group']==-1]
-    i_group = dg[dg['group']!=-1]
-    ids = no_group['id'].values
-    for index in range(len(ids)):
-        # print(no_group.loc[ids[index]]['image_path'])
-        path = no_group.loc[ids[index]]['image_path']
+    for index in range(len(dtt)):
+        path = os.path.join(main_path,'Textile Trash',dtt.loc[index,'image'])
         id = dg[dg['image_path']==path].iloc[-1]['id']
-        dg.loc[id,'group'] = x
-        x = x + 1
 
-    c_folder = os.path.join(csvs,'images')
+        dg.loc[id,'group'] = dtt.loc[index,'group'] + x
+
+    # x = result + 1
+    # no_group = dg[dg['group']==-1]
+    # i_group = dg[dg['group']!=-1]
+    # ids = no_group['id'].values
+    # for index in range(len(ids)):
+    #     # print(no_group.loc[ids[index]]['image_path'])
+    #     path = no_group.loc[ids[index]]['image_path']
+    #     id = dg[dg['image_path']==path].iloc[-1]['id']
+    #     dg.loc[id,'group'] = x
+    #     x = x + 1
+
+    c_folder = os.path.join(csvs,'created')
     dg.to_csv(os.path.join(c_folder,csv_name),index=False)
-    no_group.to_csv(os.path.join(c_folder,"no_group.csv"),index=False)
-    i_group.to_csv(os.path.join(c_folder,"i_group.csv"),index=False)
+    # no_group.to_csv(os.path.join(c_folder,"no_group.csv"),index=False)
+    # i_group.to_csv(os.path.join(c_folder,"i_group.csv"),index=False)
 
 def creator():
-    df = pd.read_csv(os.path.join(csvs,'images','realwaste_textileTrash_groups_2.csv'))
+    df = pd.read_csv(os.path.join(csvs,'groups','realwaste_textileTrash_groups.csv'))
     current_path = os.path.join(main_path,"Textile Trash")
     folder = os.path.join(pwd,"Textile Trash")
     x = 0
@@ -202,12 +213,15 @@ def creator():
         ipath = os.path.join(current_path,image)
         shutil.copy(ipath,fold)
 
-#creator()
+# creator()
 #copy_images()
-#cvv_creator()
+
+cvv_creator()
+temp_fun()
+
 #update_cvv()
 #manual_cvv()
-cvv_temp()
+# cvv_temp()
 # df = pd.read_csv(os.path.join(csvs,'images','realwates_groups.csv'))
 # result = df.iloc[-1]['group']
 # x = result + 1
