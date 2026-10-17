@@ -21,6 +21,30 @@ import pandas as pd
 
 SPLITS = ("train", "val", "test")
 
+def create_onle_groups_csv():
+    df = pd.read_csv(os.path.join(os.getcwd(),'csv','created','realwaste.csv'))
+    only_groups = df[df['group']!=-1]
+    # print(len(only_groups))
+    only_groups.to_csv(os.path.join(os.getcwd(),'csv','created','realwaste_only_groups.csv'),index=False)
+
+groups = dict()
+df = pd.read_csv(os.path.join(os.getcwd(),'csv','created','realwaste_only_groups.csv'))
+x = 0
+for i in range(len(df)):
+    group = df.iloc[i]['group']
+    id = df.iloc[i]['id']
+    if group in groups.keys():
+        #df[id]['split'] = groups.get(group,'---')
+        print("dentro")
+    else:
+        if(x >= len(SPLITS)):
+            x = 0
+        groups[group] = SPLITS[x]
+        # df[id]['split'] = SPLITS[x]
+        x += 1
+    print(df.loc[id,'id'])
+
+# df.to_csv(os.path.join(os.getcwd(),'csv','created','realwaste_only_groups_splits.csv'),index=False)
 # import argparse
 # import json
 # import shutil

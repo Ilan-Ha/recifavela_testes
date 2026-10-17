@@ -54,6 +54,7 @@ def cvv_creator():
     ipath = []
     lbl = []
     group = []
+    split = []
     for folder in folders:
         current_path = os.path.join(main_path,folder)
         for image in os.listdir(current_path):
@@ -62,8 +63,9 @@ def cvv_creator():
                 ipath.append(file_path)
                 lbl.append(folder.lower())
                 group.append(-1)
+                split.append('none')
 
-    data = {'image_path':ipath,'label':lbl,'group':group}
+    data = {'image_path':ipath,'label':lbl,'group':group,'split':split}
     df = pd.DataFrame(data)
 
     c_folder = os.path.join(csvs,'created')
@@ -216,8 +218,8 @@ def creator():
 # creator()
 #copy_images()
 
-cvv_creator()
-temp_fun()
+#cvv_creator()
+#temp_fun()
 
 #update_cvv()
 #manual_cvv()
